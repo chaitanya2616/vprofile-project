@@ -2,32 +2,32 @@ def COLOR_MAP = [
     'SUCCESS': 'good', 
     'FAILURE': 'danger',
 ]
-
-pipeline{
+pipeline {
     agent any
     tools {
         maven "MAVEN3"
         jdk "OracleJDK8"
     }
-
+    
     environment {
         SNAP_REPO = 'vprofile-snapshot'
-        NEXUS_USER = 'admin'
-        NEXUS_PASS = 'chaitanya@123'
-        RELEASE_REPO = 'vprofile-release'
-        CENTRAL_REPO = 'vpro-maven-central'
-        NEXUSIP = '172.31.53.254'
-        NEXUSPORT = '8081'
-        NEXUS_GRP_REPO = 'vpro-maven-group'
+		NEXUS_USER = 'admin'
+		NEXUS_PASS = 'admin123'
+		RELEASE_REPO = 'vprofile-release'
+		CENTRAL_REPO = 'vpro-maven-central'
+		NEXUSIP = '172.31.53.254'
+		NEXUSPORT = '8081'
+		NEXUS_GRP_REPO = 'vpro-maven-group'
         NEXUS_LOGIN = 'nexuslogin'
         SONARSERVER = 'sonarserver'
-        SONARSCANNER = 'sonarscanner'        
+        SONARSCANNER = 'sonarscanner'
+        NEXUSPASS = credentials('nexuspass')
     }
 
-    stages{
+    stages {
         stage('Build'){
-            steps{
-                    sh 'mvn -s settings.xml -DskipTests install'
+            steps {
+                sh 'mvn -s settings.xml -DskipTests install'
             }
             post {
                 success {
@@ -35,13 +35,13 @@ pipeline{
                     archiveArtifacts artifacts: '**/*.war'
                 }
             }
-
         }
 
         stage('Test'){
             steps {
                 sh 'mvn -s settings.xml test'
             }
+
         }
 
         stage('Checkstyle Analysis'){
@@ -50,13 +50,13 @@ pipeline{
             }
         }
 
-        stage('Sonar Analysis'){
+        stage('Sonar Analysis') {
             environment {
                 scannerHome = tool "${SONARSCANNER}"
             }
-            steps{
-                withSonarQubeEnv("${SONARSERVER}"){
-                    sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
+            steps {
+               withSonarQubeEnv("${SONARSERVER}") {
+                   sh '''${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=vprofile \
                    -Dsonar.projectName=vprofile \
                    -Dsonar.projectVersion=1.0 \
                    -Dsonar.sources=src/ \
@@ -64,14 +64,15 @@ pipeline{
                    -Dsonar.junit.reportsPath=target/surefire-reports/ \
                    -Dsonar.jacoco.reportsPath=target/jacoco.exec \
                    -Dsonar.java.checkstyle.reportPaths=target/checkstyle-result.xml'''
-
-                }
+              }
             }
         }
 
-        stage ("Quality Gate") {
+        stage("Quality Gate") {
             steps {
-                timeout (time: 1, unit: 'HOURS') {
+                timeout(time: 1, unit: 'HOURS') {
+                    // Parameter indicates whether to set pipeline to UNSTABLE if Quality Gate fails
+                    // true = set pipeline to UNSTABLE, false = don't
                     waitForQualityGate abortPipeline: true
                 }
             }
@@ -100,30 +101,28 @@ pipeline{
         stage('Ansible Deploy to staging'){
             steps {
                 ansiblePlaybook([
-                inventory   : 'ansible/stage.inventory',    
+                inventory   : 'ansible/stage.inventory',
                 playbook    : 'ansible/site.yml',
                 installation: 'ansible',
                 colorized   : true,
-                credentialsId: 'applogin',
-                disableHostKeyChecking: true,
+			    credentialsId: 'applogin',
+			    disableHostKeyChecking: true,
                 extraVars   : [
-                    USER: "admin",
-                    PASS: "chaitanya@123",
-                    nexusip: "172.31.53.254",
-                    reponame: "vprofile-release",
-                    groupid: "QA",
-                    time: "${env.BUILD_TIMESTAMP}",
-                    build: "${env.BUILD_ID}",
+                   	USER: "admin",
+                    PASS: "${NEXUSPASS}",
+			        nexusip: "172.31.53.254",
+			        reponame: "vprofile-release",
+			        groupid: "QA",
+			        time: "${env.BUILD_TIMESTAMP}",
+			        build: "${env.BUILD_ID}",
                     artifactid: "vproapp",
-                    vprofile_version: "vproapp-${env.BUILD_ID}-${env.BUILD_TIMESTAMP}.war"
-            
-              ]
-            ])
+			        vprofile_version: "vproapp-${env.BUILD_ID}-${env.BUILD_TIMESTAMP}.war"
+                ]
+             ])
             }
-        }   
+        }
 
     }
-
     post {
         always {
             echo 'Slack Notifications.'
@@ -132,5 +131,4 @@ pipeline{
                 message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
         }
     }
-
 }
