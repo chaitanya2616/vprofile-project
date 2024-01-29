@@ -16,10 +16,20 @@
 
 
   - name: Download latest VProfile.war file
-    get_url: url=http://{{nexusip}}:8081/nexus/content/repositories/VProfile-repo/{{groupid}}/{{time}}/{{build}}/{{vprofile_version}} dest=/tmp/ mode=755
+    get_url: 
+     url: "http://{{nexusip}}:8081/nexus/content/repositories/VProfile-repo/{{groupid}}/{{time}}/{{build}}/{{vprofile_version}}" 
+     dest: "/tmp/vproapp-{{vprofile_version}}"
+     mode: '755'
+    register: wardeploy
+    tags:
+      - deploy 
 
   - name: Stop tomcat service
-    service: name=tomcat state=stopped
+    service: 
+     name: tomcat 
+     state: stopped
+    tags:
+      - deploy 
 
   - name: Copy artifact to tomcat folder
     shell: cp /tmp/{{vprofile_version}} /var/lib/tomcat/webapps
