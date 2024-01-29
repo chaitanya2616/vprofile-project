@@ -16,20 +16,10 @@
 
 
   - name: Download latest VProfile.war file
-    get_url: 
-     url: "http://{{nexusip}}:8081/nexus/content/repositories/VProfile-repo/{{groupid}}/{{time}}/{{build}}/{{vprofile_version}}" 
-     dest: "/tmp/vproapp-{{vprofile_version}}"
-     mode: '755'
-    register: wardeploy
-    tags:
-      - deploy 
+    get_url: url=http://{{nexusip}}:8081/nexus/content/repositories/VProfile-repo/{{groupid}}/{{time}}/{{build}}/{{vprofile_version}} dest=/tmp/ mode=755
 
   - name: Stop tomcat service
-    service: 
-     name: tomcat 
-     state: stopped
-    tags:
-      - deploy 
+    service: name=tomcat state=stopped
 
   - name: Copy artifact to tomcat folder
     shell: cp /tmp/{{vprofile_version}} /var/lib/tomcat/webapps
@@ -46,3 +36,4 @@
 
   - name: Stop iptables
     service: name=iptables state=stopped
+
