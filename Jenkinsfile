@@ -112,7 +112,7 @@ pipeline {
                         PASS: "${NEXUSPASS}",
                         nexusip: "172.31.53.254",
                         reponame: "vprofile-release",
-                        groupid: "QA",
+                        groupid: "PROD",
                         time: "${env.BUILD_TIMESTAMP}",
                         build: "${env.BUILD_ID}",
                         artifactid: "vproapp",
